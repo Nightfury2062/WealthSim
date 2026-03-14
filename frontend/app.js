@@ -93,7 +93,6 @@ function renderGameScreen() {
     choicesDiv.appendChild(btn);
   });
 
-  // Badges
   const badgeRow = document.getElementById('badge-row');
   badgeRow.innerHTML = s.badges.map(b =>
     `<span class="badge">${b}</span>`
@@ -101,13 +100,34 @@ function renderGameScreen() {
 
   prevState = { ...s };
 
-  // AI advisor tip (mock — swap with real API call)
   fetchAdvisorTip(s);
 }
 
-// ── Handle a Player Choice ───────────────────────────────────
-function handleChoice(choiceId) {
+// ── Handle a Player Choice (UPDATED) ─────────────────────────
+async function handleChoice(choiceId) {
   applyChoice(choiceId);
+
+  try {
+    const s = getState();
+    const res = await fetch('http://127.0.0.1:8000/make-decision', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        decision_id: choiceId,
+        stage: s.stage,
+        net_worth: s.netWorth,
+        debt: s.debt,
+        credit_score: s.creditScore,
+        happiness: s.happiness
+      })
+    });
+
+    const data = await res.json();
+    console.log('Decision response:', data);
+
+  } catch (err) {
+    console.log('Backend offline, using local engine');
+  }
 
   if (isGameOver()) {
     renderEndScreen();
@@ -190,7 +210,7 @@ function renderLeaderboard() {
   `).join('');
 }
 
-// ── AI Advisor Tip (mock) ────────────────────────────────────
+// ── AI Advisor Tip ───────────────────────────────────────────
 const TIPS = {
   high_debt:    "Your debt ratio is alarming. Before anything else — stop accumulating, start paying down.",
   low_credit:   "A credit score below 650 will cost you more on every loan. Pay bills on time, every time.",
@@ -215,10 +235,25 @@ function fetchAdvisorTip(s) {
   }, 600);
 }
 
-// ── Start Game ───────────────────────────────────────────────
-function startGame() {
+// ── Start Game (UPDATED) ─────────────────────────────────────
+async function startGame() {
   const name = document.getElementById('player-name').value.trim() || 'Player';
   const goal = document.getElementById('player-goal').value;
+
+  try {
+    const res = await fetch('http://127.0.0.1:8000/start-game', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player_name: name, goal: goal })
+    });
+
+    const data = await res.json();
+    console.log('Game started:', data);
+
+  } catch (err) {
+    console.log('Backend offline, using local game');
+  }
+
   initGame(name, goal);
   prevState = {};
   renderGameScreen();
